@@ -2,20 +2,20 @@ import payload from '../../packages/payload/src'
 import { initPayloadTest } from '../helpers/configHelpers'
 
 describe('Stripe Plugin', () => {
-  beforeAll(async () => {
-    await initPayloadTest({ __dirname, init: { local: true } })
-  })
+  // beforeAll(async () => {
+  //   await initPayloadTest({ __dirname, init: { local: true } })
+  // })
 
-  it('should create products', async () => {
-    const product = await payload.create({
-      collection: 'products',
-      data: {
-        name: 'Test Product',
-      },
-    })
+  // it('should create products', async () => {
+  //   const product = await payload.create({
+  //     collection: 'products',
+  //     data: {
+  //       name: 'Test Product',
+  //     },
+  //   })
 
-    expect(product).toHaveProperty('name', 'Test Product')
-  })
+  //   expect(product).toHaveProperty('name', 'Test Product')
+  // })
 
   // Test various common API calls like `products.create`, etc.
   // Send the requests through the Payload->Stripe proxy

@@ -6,6 +6,7 @@ import type { MongooseAdapter } from '../../packages/db-mongodb/src/index'
 import type { SanitizedConfig } from '../../packages/payload/src/config/types'
 import type { PaginatedDocs } from '../../packages/payload/src/database/types'
 import type { RichTextField } from './payload-types'
+import type { GroupField } from './payload-types'
 
 import payload from '../../packages/payload/src'
 import { devUser } from '../credentials'
@@ -29,7 +30,6 @@ import {
 import { tabsDoc } from './collections/Tabs/shared'
 import { defaultText } from './collections/Text/shared'
 import { clearAndSeedEverything } from './seed'
-import { GroupField } from './payload-types'
 import {
   arrayFieldsSlug,
   blockFieldsSlug,
@@ -93,7 +93,46 @@ describe('Fields', () => {
         data: { text },
       })
 
-      await expect(fieldWithDefaultValue).toEqual(dependentOnFieldWithDefaultValue)
+      expect(fieldWithDefaultValue).toEqual(dependentOnFieldWithDefaultValue)
+    })
+
+    it('should create an array of texts using hasMany', async () => {
+      const hasMany = ['text1', 'text2']
+      const { id } = await payload.create({
+        collection: 'text-fields',
+        data: {
+          hasMany,
+        },
+        locale: 'en',
+      })
+      const doc = await payload.findByID({
+        id,
+        collection: 'text-fields',
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      expect(doc.localizedHasMany.en).toEqual(localizedHasMany)
+    })
+
+    it('should localize an array of texts using hasMany', async () => {
+      const localizedHasMany = ['text1', 'text2']
+      const { id } = await payload.create({
+        collection: 'text-fields',
+        data: {
+          localizedHasMany,
+        },
+        locale: 'en',
+      })
+      const localizedDoc = await payload.findByID({
+        id,
+        collection: 'text-fields',
+        locale: 'all',
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      expect(localizedDoc.localizedHasMany.en).toEqual(localizedHasMany)
     })
   })
 
@@ -324,6 +363,7 @@ describe('Fields', () => {
         }),
       ).rejects.toThrow('The following field is invalid: min')
     })
+
     it('should not create number above max', async () => {
       await expect(async () =>
         payload.create({
@@ -356,6 +396,7 @@ describe('Fields', () => {
         }),
       ).rejects.toThrow('The following field is invalid: negativeNumber')
     })
+
     it('should not create a decimal number below min', async () => {
       await expect(async () =>
         payload.create({
@@ -377,6 +418,7 @@ describe('Fields', () => {
         }),
       ).rejects.toThrow('The following field is invalid: decimalMax')
     })
+
     it('should localize an array of numbers using hasMany', async () => {
       const localizedHasMany = [5, 10]
       const { id } = await payload.create({

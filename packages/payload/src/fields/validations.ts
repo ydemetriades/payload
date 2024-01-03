@@ -27,24 +27,40 @@ import { isValidID } from '../utilities/isValidID'
 import { fieldAffectsData } from './config/types'
 
 export const text: Validate<unknown, unknown, TextField> = (
-  value: string,
-  { config, maxLength: fieldMaxLength, minLength, required, t },
+  value: string | string[],
+  { config, hasMany, maxLength: fieldMaxLength, maxRows, minLength, minRows, required, t },
 ) => {
   let maxLength: number
 
   if (typeof config?.defaultMaxTextLength === 'number') maxLength = config.defaultMaxTextLength
   if (typeof fieldMaxLength === 'number') maxLength = fieldMaxLength
-  if (value && maxLength && value.length > maxLength) {
-    return t('validation:shorterThanMax', { maxLength })
+
+  if (hasMany === true) {
+    const lengthValidationResult = validateArrayLength(value, { maxRows, minRows, required, t })
+    if (typeof lengthValidationResult === 'string') return lengthValidationResult
   }
 
-  if (value && minLength && value?.length < minLength) {
-    return t('validation:longerThanMin', { minLength })
+  if (!value) {
+    // if no value is present, validate based on required
+    if (required) return t('validation:required')
+    if (!required) return true
   }
 
-  if (required) {
-    if (typeof value !== 'string' || value?.length === 0) {
-      return t('validation:required')
+  const stringsToValidate: string[] = Array.isArray(value) ? value : [value]
+
+  for (const val of stringsToValidate) {
+    if (val && maxLength && val.length > maxLength) {
+      return t('validation:shorterThanMax', { maxLength })
+    }
+
+    if (val && minLength && val?.length < minLength) {
+      return t('validation:longerThanMin', { minLength })
+    }
+
+    if (required) {
+      if (typeof val !== 'string' || val?.length === 0) {
+        return t('validation:required')
+      }
     }
   }
 

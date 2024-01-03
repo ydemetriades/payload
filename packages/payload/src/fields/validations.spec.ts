@@ -48,6 +48,31 @@ describe('Field Validations', () => {
       const result = text(val, { ...options, minLength: 10 })
       expect(result).toBe(true)
     })
+    it('should validate an array of strings', async () => {
+      const val = ['text1', 'text2']
+      const result = text(val, { ...options, hasMany: true })
+      expect(result).toBe(true)
+    })
+    it('should validate an array of strings using min', async () => {
+      const val = ['text1', 'text2']
+      const result = text(val, { ...options, hasMany: true, min: 3 })
+      expect(result).toBe('validation:lessThanMin')
+    })
+    it('should validate an array of strings using max', async () => {
+      const val = ['text1', 'text2']
+      const result = text(val, { ...options, hasMany: true, max: 1 })
+      expect(result).toBe('validation:greaterThanMax')
+    })
+    it('should validate an array of strings using minRows', async () => {
+      const val = ['text1', 'text2']
+      const result = text(val, { ...options, hasMany: true, minRows: 4 })
+      expect(result).toBe('validation:lessThanMin')
+    })
+    it('should validate an array of strings using maxRows', async () => {
+      const val = ['text1', 'text2', 'text3']
+      const result = text(val, { ...options, hasMany: true, maxRows: 2 })
+      expect(result).toBe('validation:greaterThanMax')
+    })
   })
 
   describe('textarea', () => {

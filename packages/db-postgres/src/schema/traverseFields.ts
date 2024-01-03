@@ -56,8 +56,10 @@ type Args = {
 type Result = {
   hasLocalizedField: boolean
   hasLocalizedManyNumberField: boolean
+  hasLocalizedManyTextField: boolean
   hasLocalizedRelationshipField: boolean
   hasManyNumberField: 'index' | boolean
+  hasManyTextField: 'index' | boolean
 }
 
 export const traverseFields = ({
@@ -86,6 +88,8 @@ export const traverseFields = ({
   let hasLocalizedRelationshipField = false
   let hasManyNumberField: 'index' | boolean = false
   let hasLocalizedManyNumberField = false
+  let hasManyTextField: 'index' | boolean = false
+  let hasLocalizedManyTextField = false
 
   let parentIDColType = 'integer'
   if (columns.id instanceof PgNumericBuilder) parentIDColType = 'numeric'
@@ -116,7 +120,8 @@ export const traverseFields = ({
       if (
         (field.unique || field.index) &&
         !['array', 'blocks', 'group', 'point', 'relationship', 'upload'].includes(field.type) &&
-        !(field.type === 'number' && field.hasMany === true)
+        !(field.type === 'number' && field.hasMany === true) &&
+        !(field.type === 'text' && field.hasMany === true)
       ) {
         const unique = disableUnique !== true && field.unique
         if (unique) {
@@ -135,7 +140,29 @@ export const traverseFields = ({
     }
 
     switch (field.type) {
-      case 'text':
+      case 'text': {
+        if (field.hasMany) {
+          if (field.localized) {
+            hasLocalizedManyTextField = true
+          }
+
+          if (field.index) {
+            hasManyTextField = 'index'
+          } else if (!hasManyTextField) {
+            hasManyTextField = true
+          }
+
+          if (field.unique) {
+            throw new InvalidConfiguration(
+              'Unique is not supported in Postgres for hasMany number fields.',
+            )
+          }
+        } else {
+          targetTable[fieldName] = varchar(columnName)
+        }
+        break
+      }
+
       case 'email':
       case 'code':
       case 'textarea': {
@@ -286,24 +313,32 @@ export const traverseFields = ({
           baseExtraConfig._localeIdx = (cols) => index('_locale_idx').on(cols._locale)
         }
 
-        const { hasManyNumberField: subHasManyNumberField, relationsToBuild: subRelationsToBuild } =
-          buildTable({
-            adapter,
-            baseColumns,
-            baseExtraConfig,
-            disableNotNull: disableNotNullFromHere,
-            disableUnique,
-            fields: disableUnique ? idToUUID(field.fields) : field.fields,
-            rootRelationsToBuild,
-            rootRelationships: relationships,
-            rootTableIDColType,
-            rootTableName,
-            tableName: arrayTableName,
-          })
+        const {
+          hasManyNumberField: subHasManyNumberField,
+          hasManyTextField: subHasManyTextField,
+          relationsToBuild: subRelationsToBuild,
+        } = buildTable({
+          adapter,
+          baseColumns,
+          baseExtraConfig,
+          disableNotNull: disableNotNullFromHere,
+          disableUnique,
+          fields: disableUnique ? idToUUID(field.fields) : field.fields,
+          rootRelationsToBuild,
+          rootRelationships: relationships,
+          rootTableIDColType,
+          rootTableName,
+          tableName: arrayTableName,
+        })
 
         if (subHasManyNumberField) {
           if (!hasManyNumberField || subHasManyNumberField === 'index')
             hasManyNumberField = subHasManyNumberField
+        }
+
+        if (subHasManyTextField) {
+          if (!hasManyTextField || subHasManyTextField === 'index')
+            hasManyTextField = subHasManyTextField
         }
 
         relationsToBuild.set(fieldName, arrayTableName)
@@ -362,6 +397,7 @@ export const traverseFields = ({
 
             const {
               hasManyNumberField: subHasManyNumberField,
+              hasManyTextField: subHasManyTextField,
               relationsToBuild: subRelationsToBuild,
             } = buildTable({
               adapter,
@@ -380,6 +416,11 @@ export const traverseFields = ({
             if (subHasManyNumberField) {
               if (!hasManyNumberField || subHasManyNumberField === 'index')
                 hasManyNumberField = subHasManyNumberField
+            }
+
+            if (subHasManyTextField) {
+              if (!hasManyTextField || subHasManyTextField === 'index')
+                hasManyTextField = subHasManyTextField
             }
 
             const blockTableRelations = relations(
@@ -426,8 +467,10 @@ export const traverseFields = ({
           const {
             hasLocalizedField: groupHasLocalizedField,
             hasLocalizedManyNumberField: groupHasLocalizedManyNumberField,
+            hasLocalizedManyTextField: groupHasLocalizedManyTextField,
             hasLocalizedRelationshipField: groupHasLocalizedRelationshipField,
             hasManyNumberField: groupHasManyNumberField,
+            hasManyTextField: groupHasManyTextField,
           } = traverseFields({
             adapter,
             buildNumbers,
@@ -455,6 +498,8 @@ export const traverseFields = ({
           if (groupHasLocalizedRelationshipField) hasLocalizedRelationshipField = true
           if (groupHasManyNumberField) hasManyNumberField = true
           if (groupHasLocalizedManyNumberField) hasLocalizedManyNumberField = true
+          if (groupHasManyTextField) hasManyTextField = true
+          if (groupHasLocalizedManyTextField) hasLocalizedManyTextField = true
           break
         }
 
@@ -463,8 +508,10 @@ export const traverseFields = ({
         const {
           hasLocalizedField: groupHasLocalizedField,
           hasLocalizedManyNumberField: groupHasLocalizedManyNumberField,
+          hasLocalizedManyTextField: groupHasLocalizedManyTextField,
           hasLocalizedRelationshipField: groupHasLocalizedRelationshipField,
           hasManyNumberField: groupHasManyNumberField,
+          hasManyTextField: groupHasManyTextField,
         } = traverseFields({
           adapter,
           buildNumbers,
@@ -492,6 +539,8 @@ export const traverseFields = ({
         if (groupHasLocalizedRelationshipField) hasLocalizedRelationshipField = true
         if (groupHasManyNumberField) hasManyNumberField = true
         if (groupHasLocalizedManyNumberField) hasLocalizedManyNumberField = true
+        if (groupHasManyTextField) hasManyTextField = true
+        if (groupHasLocalizedManyTextField) hasLocalizedManyTextField = true
         break
       }
 
@@ -501,8 +550,10 @@ export const traverseFields = ({
         const {
           hasLocalizedField: tabHasLocalizedField,
           hasLocalizedManyNumberField: tabHasLocalizedManyNumberField,
+          hasLocalizedManyTextField: tabHasLocalizedManyTextField,
           hasLocalizedRelationshipField: tabHasLocalizedRelationshipField,
           hasManyNumberField: tabHasManyNumberField,
+          hasManyTextField: tabHasManyTextField,
         } = traverseFields({
           adapter,
           buildNumbers,
@@ -530,6 +581,8 @@ export const traverseFields = ({
         if (tabHasLocalizedRelationshipField) hasLocalizedRelationshipField = true
         if (tabHasManyNumberField) hasManyNumberField = true
         if (tabHasLocalizedManyNumberField) hasLocalizedManyNumberField = true
+        if (tabHasManyTextField) hasManyTextField = true
+        if (tabHasLocalizedManyTextField) hasLocalizedManyTextField = true
 
         break
       }
@@ -540,8 +593,10 @@ export const traverseFields = ({
         const {
           hasLocalizedField: rowHasLocalizedField,
           hasLocalizedManyNumberField: rowHasLocalizedManyNumberField,
+          hasLocalizedManyTextField: rowHasLocalizedManyTextField,
           hasLocalizedRelationshipField: rowHasLocalizedRelationshipField,
           hasManyNumberField: rowHasManyNumberField,
+          hasManyTextField: rowHasManyTextField,
         } = traverseFields({
           adapter,
           buildNumbers,
@@ -569,6 +624,9 @@ export const traverseFields = ({
         if (rowHasLocalizedRelationshipField) hasLocalizedRelationshipField = true
         if (rowHasManyNumberField) hasManyNumberField = true
         if (rowHasLocalizedManyNumberField) hasLocalizedManyNumberField = true
+        if (rowHasManyTextField) hasManyTextField = true
+        if (rowHasLocalizedManyTextField) hasLocalizedManyTextField = true
+
         break
       }
 
@@ -605,7 +663,9 @@ export const traverseFields = ({
   return {
     hasLocalizedField,
     hasLocalizedManyNumberField,
+    hasLocalizedManyTextField,
     hasLocalizedRelationshipField,
     hasManyNumberField,
+    hasManyTextField,
   }
 }
